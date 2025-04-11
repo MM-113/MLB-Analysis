@@ -85,14 +85,15 @@ with st.form("mlb_form"):
     home_team = st.text_input("主隊名稱")
     away_team = st.text_input("客隊名稱")
     target = st.number_input("盤口總分", step=0.5)
-    
+
     col1, col2 = st.columns(2)
     with col1:
         st.markdown(f"#### {home_team or '主隊'} 數據")
         h_time_avg = st.number_input("時段場均得分", key="h1")
         h_base_avg = st.number_input("整體場均得分", key="h2")
         h_allow = st.number_input("場均失分", key="h3")
-        h_over = st.slider("大分過盤率 (%)", 0, 100, 50, key="h4") / 100
+        h_over_percent = st.text_input("大分過盤率 (%)", key="h4")
+        h_over = float(h_over_percent) if h_over_percent else 0
         h_avg = st.number_input("團隊打擊率 (如 0.250)", key="h5")
         h_obp = st.number_input("團隊上壘率 (如 0.320)", key="h6")
         h_era = st.number_input("投手 ERA", key="h7")
@@ -102,7 +103,8 @@ with st.form("mlb_form"):
         a_time_avg = st.number_input("時段場均得分", key="a1")
         a_base_avg = st.number_input("整體場均得分", key="a2")
         a_allow = st.number_input("場均失分", key="a3")
-        a_over = st.slider("大分過盤率 (%)", 0, 100, 50, key="a4") / 100
+        a_over_percent = st.text_input("大分過盤率 (%)", key="a4")
+        a_over = float(a_over_percent) if a_over_percent else 0
         a_avg = st.number_input("團隊打擊率 (如 0.250)", key="a5")
         a_obp = st.number_input("團隊上壘率 (如 0.320)", key="a6")
         a_era = st.number_input("投手 ERA", key="a7")
@@ -112,25 +114,29 @@ with st.form("mlb_form"):
 
 # 執行模擬與結果顯示
 if submitted:
-    home = {
-        'team_name': home_team, 'time_avg': h_time_avg, 'base_avg': h_base_avg,
-        'allow': h_allow, 'over_rate': h_over, 'team_batting': h_avg, 'team_obp': h_obp,
-        'pitcher': {'era': h_era, 'baa': h_baa}
-    }
-    away = {
-        'team_name': away_team, 'time_avg': a_time_avg, 'base_avg': a_base_avg,
-        'allow': a_allow, 'over_rate': a_over, 'team_batting': a_avg, 'team_obp': a_obp,
-        'pitcher': {'era': a_era, 'baa': a_baa}
-    }
+    try:
+        home = {
+            'team_name': home_team, 'time_avg': h_time_avg, 'base_avg': h_base_avg,
+            'allow': h_allow, 'over_rate': h_over / 100, 'team_batting': h_avg, 'team_obp': h_obp,
+            'pitcher': {'era': h_era, 'baa': h_baa}
+        }
+        away = {
+            'team_name': away_team, 'time_avg': a_time_avg, 'base_avg': a_base_avg,
+            'allow': a_allow, 'over_rate': a_over / 100, 'team_batting': a_avg, 'team_obp': a_obp,
+            'pitcher': {'era': a_era, 'baa': a_baa}
+        }
 
-    adv = simulate_game(home, away, target, use_advanced_data=True)
-    base = simulate_game(home, away, target, use_advanced_data=False)
+        adv = simulate_game(home, away, target, use_advanced_data=True)
+        base = simulate_game(home, away, target, use_advanced_data=False)
 
-    def display(result):
-        st.subheader(f"{result['type']} 結果")
-        st.write(f"預期總分：{result['combined_avg']:.2f}，推薦：**{result['recommendation']}**")
-        st.write(f"蒙地卡羅：{result['mc_prob']:.1f}%｜負二項：{result['nb_prob']:.1f}%｜泊松：{result['poisson_prob']:.1f}%")
-        st.write(f"綜合機率：**{result['probability']:.1f}%**｜星級：{'★' * int(result['stars']) + '☆' * (5 - int(result['stars']))} ({result['stars']}/5.0)")
+        def display(result):
+            st.subheader(f"{result['type']} 結果")
+            st.write(f"預期總分：{result['combined_avg']:.2f}，推薦：**{result['recommendation']}**")
+            st.write(f"蒙地卡羅：{result['mc_prob']:.1f}%｜負二項：{result['nb_prob']:.1f}%｜泊松：{result['poisson_prob']:.1f}%")
+            st.write(f"綜合機率：**{result['probability']:.1f}%**｜星級：{'★' * int(result['stars']) + '☆' * (5 - int(result['stars']))} ({result['stars']}/5.0)")
 
-    display(adv)
-    display(base)
+        display(adv)
+        display(base)
+
+    except Exception as e:
+        st.error(f"輸入錯誤或缺漏資料，請檢查所有欄位：\n{e}")
